@@ -5,5 +5,5 @@
 source /data/luberjm/conda/etc/profile.d/conda.sh
 conda activate imaging
 
-PREFIX=(${F//./ })
+PREFIX=${F%????}
 vips openslideload --level 2 $F ${PREFIX}.jpg
