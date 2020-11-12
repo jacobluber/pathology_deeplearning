@@ -36,18 +36,33 @@ rm -R -- */
 ls * > images.txt
 ```
 
-sbatch --export=F='filename.svs' svs_conversion.sbatch
-
-## Viewing Data
-Fiji
-
 Now, we will convert everything to JPG. Note that libvips has really efficient C integrations with OpenSlide, and that we can set a level "flag" to determine the resolution of our output. Here we set a level that gives us images that are 1000sx1000s of pixels, which is a sweet spot for processing as each image takes a few seconds. This may be modified later. The conversion script is located in scripts.
 
-Convert 1 image
+### Convert 1 Image
 
 ```bash 
-sbatch --export=F='TCGA-XM-A8RC-01A-01-TSA.E8BB705F-15D0-41F3-8A37-1F25964A5BBB.svs' svs.conversion.sbatch
+sbatch --partition=ccr --export=F='/data/luberjm/images/TCGA-XM-A8RC-01A-01-TSA.E8BB705F-15D0-41F3-8A37-1F25964A5BBB.svs' /home/luberjm/code/imaging/scripts/svs_conversion.sbatch
 ```
+
+sbatch doesn't support command line args in bash, so we are exporting what would be the command line arg so that this can be parallelized with a sbatch swarm: 
+
+### Convert All Images In A Batch 
+
+```bash 
+for x in *.svs;do echo "sbatch --partition=ccr --export=F='/data/luberjm/images/$x' /home/luberjm/code/imaging/scripts/svs_conversion.sbatch" >> batch_jobs.sh;done
+sh batch_jobs.sh 
+```
+
+## Viewing Converted Output
+
+```bash
+module load fiji/2.0.0-pre-7
+Fiji
+```
+
+This is an ImageJ wrapper on Biowulf where we can look to check that the image conversions were succesful. 
+
+## Breaking Down Converted Output Into Patches For Training
 
 ## Examples of Slides That Will Be Challenging For Autoencoder
 This is an ongoing list of challenging training examples that we will have to account for via preprocessing. 
