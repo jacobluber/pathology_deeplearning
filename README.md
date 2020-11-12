@@ -38,6 +38,8 @@ ls * > images.txt
 
 Now, we will convert everything to JPG. Note that libvips has really efficient C integrations with OpenSlide, and that we can set a level "flag" to determine the resolution of our output. Here we set a level that gives us images that are 1000sx1000s of pixels, which is a sweet spot for processing as each image takes a few seconds. This may be modified later. The conversion script is located in scripts.
 
+Some insight into what is happening here: SVS images are a propietary format from Aperio digital pathology instruments. They are essentially TIFFs at heart, but have some modifications (such as layers with different resolution) and extra tags that make them unreadable without conversion. 
+
 ### Convert 1 Image
 
 ```bash 
