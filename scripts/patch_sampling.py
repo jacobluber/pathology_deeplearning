@@ -8,7 +8,7 @@ y_slide = int(sys.argv[3])
 x,y=imageObject.size
 
 count = 0
-prefix = sys.argv[1].split('/')[-1:][:-4]
+prefix = str(sys.argv[1].split('/')[-1:])[2:-6]
 for right in range(0,x):
     for lower in range(0,y):
         if right % x_slide == 0:
