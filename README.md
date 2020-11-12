@@ -65,7 +65,34 @@ Fiji
 This is an ImageJ wrapper on Biowulf where we can look to check that the image conversions were succesful. 
 
 ## Breaking Down Converted Output Into Patches For Training
+The script "patch_sampling.py" in the scripts folder generates patches for training the autoencoder. It takes as arguments a jpg post svs conversion and x_slide and y_slide, which are how much the window slides in pixels. All the code is based around a cartesian coordinate system with 0,0 at the upper left of the images. 
+
+### Running on 1 image
+
+```bash 
+python3 /home/luberjm/code/imaging/scripts/patch_sampling.py /data/luberjm/images/TCGA-ZT-A8OM-01A-01-TS1.98208A8F-FE2D-4967-B31D-B66C188A2F66.jpg 50 50
+```
+
+### Running on a set of images via a swarm 
+
+```bash
+for x in *.jpg;
+do echo "python3 /home/luberjm/code/imaging/scripts/patch_sampling.py /data/luberjm/images/$x 50 50" >> image_processing.swarm;
+done
+```
+
+Run the swarmfile where you want the 10k-100ks of output image partitions for training to be stored. 
+```bash
+mv image_processing.swarm output
+swarm -f image_processing.swarm --partition ccr
+```
+
+For 137 aperio svs images in the pilot at relatively low resolution, this has generated an initial training set of 470,298 250x250 pixel images for the inital training, which are located at /data/luberjm/images/output. 
+
+## Autoencoder Training 
+
 
 ## Examples of Slides That Will Be Challenging For Autoencoder
 This is an ongoing list of challenging training examples that we will have to account for via preprocessing. 
 ![Challenging Image](examples/chal1.jpg)
+As you can see in the above iamge, most "patches" will be useless, so we likely need to do some sort of edge detection preprocessing. 
