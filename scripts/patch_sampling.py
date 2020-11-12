@@ -19,7 +19,7 @@ for right in range(0,x):
                     if upper >= 0:
                         count += 1
                         cropped = imageObject.crop((left,upper,right,lower))
-                        cropped = cropped.save(prefix+'_'+str(count)+".jpg") 
+                        cropped = cropped.save("output/"+prefix+'_'+str(count)+".jpg") 
 
 
 
