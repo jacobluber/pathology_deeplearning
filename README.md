@@ -27,7 +27,7 @@ gdc-client download -m  /home/luberjm/gdc_manifest_20201105_184746.txt
 
 The manifest is also included in the docs folder.
 
-## Fast Conversion of SVS to JPG 
+## Fast Conversion of SVS to PNG 
 The subdirectory structure is annoying from the gdc-client output, so we will first fix that.
 
 ```bash
@@ -36,14 +36,14 @@ rm -R -- */
 ls * > images.txt
 ```
 
-Now, we will convert everything to JPG. Note that libvips has really efficient C integrations with OpenSlide, and that we can set a level "flag" to determine the resolution of our output. Here we set a level that gives us images that are 1000sx1000s of pixels, which is a sweet spot for processing as each image takes a few seconds. This may be modified later. The conversion script is located in scripts.
+Now, we will convert everything to PNG. Note that libvips has really efficient C integrations with OpenSlide, and that we can set a level "flag" to determine the resolution of our output. After benchmarking, it was shown that the pipeline requires the maximum resolution (level 0). The conversion script is located in scripts.
 
 Some insight into what is happening here: SVS images are a propietary format from Aperio digital pathology instruments. They are essentially TIFFs at heart, but have some modifications (such as layers with different resolution) and extra tags that make them unreadable without conversion. 
 
 ### Convert 1 Image
 
 ```bash 
-sbatch --partition=ccr --export=F='/data/luberjm/images/TCGA-XM-A8RC-01A-01-TSA.E8BB705F-15D0-41F3-8A37-1F25964A5BBB.svs' /home/luberjm/code/imaging/scripts/svs_conversion.sbatch
+sbatch --partition=ccr --mem=10gb --export=F='/data/luberjm/images/TCGA-XM-A8RC-01A-01-TSA.E8BB705F-15D0-41F3-8A37-1F25964A5BBB.svs' /home/luberjm/code/imaging/scripts/svs_conversion.sbatch
 ```
 
 sbatch doesn't support command line args in bash, so we are exporting what would be the command line arg so that this can be parallelized with a sbatch swarm: 
@@ -51,7 +51,7 @@ sbatch doesn't support command line args in bash, so we are exporting what would
 ### Convert All Images In A Batch 
 
 ```bash 
-for x in *.svs;do echo "sbatch --partition=ccr --export=F='/data/luberjm/images/$x' /home/luberjm/code/imaging/scripts/svs_conversion.sbatch" >> batch_jobs.sh;done
+for x in *.svs;do echo "sbatch --partition=ccr --mem=10gb --export=F='/data/luberjm/images/$x' /home/luberjm/code/imaging/scripts/svs_conversion.sbatch" >> batch_jobs.sh;done
 sh batch_jobs.sh 
 ```
 
@@ -95,4 +95,4 @@ For 137 aperio svs images in the pilot at relatively low resolution, this has ge
 ## Examples of Slides That Will Be Challenging For Autoencoder
 This is an ongoing list of challenging training examples that we will have to account for via preprocessing. 
 ![Challenging Image](examples/chal1.jpg)
-As you can see in the above iamge, most "patches" will be useless, so we likely need to do some sort of edge detection preprocessing. 
+As you can see in the above image, most "patches" will be useless, so we likely need to do some sort of edge detection preprocessing. 
