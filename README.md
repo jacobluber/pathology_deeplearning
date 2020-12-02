@@ -90,7 +90,7 @@ swarm -f image_processing.swarm --partition ccr
 For 137 aperio svs images in the pilot at relatively low resolution, this has generated an initial training set of 470,298 250x250 pixel images for the inital training, which are located at /data/luberjm/images/output. 
 
 ## Autoencoder Training 
-
+Current autoencoder work is located in scripts, there are currently some issues that are being resolved. 
 
 ## Examples of Slides That Will Be Challenging For Autoencoder
 This is an ongoing list of challenging training examples that we will have to account for via preprocessing. 
