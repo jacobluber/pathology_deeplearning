@@ -1,113 +1,201 @@
 from __future__ import print_function
+import argparse
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
-import torchvision
+import torch.utils.data
+import os
+from torch import nn, optim
+from torch.nn import functional as F
 from torchvision import datasets, transforms
-from torch.autograd import Variable
 from torchvision.utils import save_image
-import gc
+from PIL import ImageFile
+import torchvision 
 
-gc.collect()
-torch.cuda.empty_cache()
 
-bs=4
+from typing import TypeVar
+Tensor = TypeVar('torch.tensor')
+#ImageFile.LOAD_TRUNCATED_IMAGES = True
+
+parser = argparse.ArgumentParser(description='Pathology Images')
+parser.add_argument('--batch-size', type=int, default=5, metavar='N',
+                    help='input batch size for training (default: 128)')
+parser.add_argument('--epochs', type=int, default=10, metavar='N',
+                    help='number of epochs to train (default: 10)')
+parser.add_argument('--no-cuda', action='store_true', default=False,
+                    help='disables CUDA training')
+parser.add_argument('--seed', type=int, default=1, metavar='S',
+                    help='random seed (default: 1)')
+parser.add_argument('--log-interval', type=int, default=10, metavar='N',
+                    help='how many batches to wait before logging training status')
+args = parser.parse_args()
+args.cuda = not args.no_cuda and torch.cuda.is_available()
+
+torch.manual_seed(args.seed)
+
+device = torch.device("cuda" if args.cuda else "cpu")
+
 transform = transforms.Compose([
     transforms.ToTensor(),
 ])
 
-# train and validation data
-train_data = torchvision.datasets.ImageFolder(root="/data/luberjm/dl/input/data",transform=transform)
-val_data = torchvision.datasets.ImageFolder(root="/data/luberjm/dl/input/data",transform=transform)
+kwargs = {'num_workers': 20, 'pin_memory': True} if args.cuda else {}
+input_data = torchvision.datasets.ImageFolder(root="/data/luberjm/data/training_set",transform=transform)
+t1, t2 = torch.utils.data.random_split(input_data, [35784, 1100])
+train_data, test_data = torch.utils.data.random_split(t2, [1000, 100])
+#test_data = torchvision.datasets.ImageFolder(root="/data/luberjm/data/training_set",transform=transform)
+trainl = len(train_data)
+testl = len(test_data)
+train_loader = torch.utils.data.DataLoader(train_data,batch_size=args.batch_size, shuffle=True, **kwargs)
+test_loader = torch.utils.data.DataLoader(test_data,batch_size=args.batch_size, shuffle=True, **kwargs)
 
+class AutoEncoder2(nn.Module):
+    def __init__(self,
+                 **kwargs) -> None:
+        super(AutoEncoder2, self).__init__()
 
-train_loader = torch.utils.data.DataLoader(dataset=train_data, batch_size=bs, shuffle=True)
-test_loader = torch.utils.data.DataLoader(dataset=val_data, batch_size=bs, shuffle=False)
+        modules = []
+        in_channels = 3
+        hidden_dims = [32, 64, 128, 256, 512] #[32, 64, 128, 256, 512]
 
-class VAE(nn.Module):
-    def __init__(self, x_dim, h_dim1, h_dim2, z_dim):
-        super(VAE, self).__init__()
-        
-        # encoder part
-        self.fc1 = nn.Linear(x_dim, h_dim1)
-        self.fc2 = nn.Linear(h_dim1, h_dim2)
-        self.fc31 = nn.Linear(h_dim2, z_dim)
-        self.fc32 = nn.Linear(h_dim2, z_dim)
-        # decoder part
-        self.fc4 = nn.Linear(z_dim, h_dim2)
-        self.fc5 = nn.Linear(h_dim2, h_dim1)
-        self.fc6 = nn.Linear(h_dim1, x_dim)
-        
-    def encoder(self, x):
-        h = F.relu(self.fc1(x))
-        h = F.relu(self.fc2(h))
-        return self.fc31(h), self.fc32(h) # mu, log_var
+        # Build Encoder
+        for h_dim in hidden_dims:
+            modules.append(
+                nn.Sequential(
+                    nn.Conv2d(in_channels, out_channels=h_dim,
+                              kernel_size=5,
+                              stride=1, #3
+                              padding=0), #1
+                    nn.ReLU(),
+                )
+            )
+            in_channels = h_dim
+
+        self.encoder = nn.Sequential(*modules)
+
+        # Build Decoder
+        modules = []
+        hidden_dims.reverse()
+
+        for i in range(len(hidden_dims) - 1):
+            modules.append(
+                nn.Sequential(
+                    nn.ConvTranspose2d(hidden_dims[i],
+                                       hidden_dims[i + 1],
+                                       kernel_size=4,#4
+                                       stride=1,#2
+                                       padding=0,#1
+                                       output_padding=0 ), #1
+                    nn.ReLU(),
+                )
+            )
+
+        self.decoder = nn.Sequential(*modules)
+
+        self.final_layer = nn.Sequential(
+                            nn.ConvTranspose2d(hidden_dims[-1],
+                                               hidden_dims[-1],
+                                               kernel_size=3, #3
+                                               stride=1, #2
+                                               padding=1, #2 
+                                               output_padding=0), #1
+                            nn.ReLU(),
+                            nn.Conv2d(hidden_dims[-1], 
+                                       out_channels=3,
+                                       kernel_size=3, #3
+                                       padding= 5), #1
+                            nn.Sigmoid())
+
+    def encode(self, x: Tensor) -> Tensor:
+        encoded = self.encoder(x)
+        #print(encoded.shape)
+        return encoded
+
+    def decode(self, x: Tensor) -> Tensor:
+        decoded = self.decoder(x)
+        #print(decoded.shape)
+        return decoded
+
+    def forward(self, x: Tensor) -> Tensor:
+        encoded = self.encode(x)
+        decoded = self.decode(encoded)
+        out = self.final_layer(decoded)
+        return out
+
+    def latent_code(self, x: Tensor) -> Tensor:
+        x = self.encode(x)
+        return x.view(x.size(0), -1)
+
+    def loss_function(self, recon_x: Tensor, x: Tensor, **kwargs) -> dict:
+        loss = F.binary_cross_entropy(recon_x, x)
+        return {'loss': loss}
     
-    def sampling(self, mu, log_var):
-        std = torch.exp(0.5*log_var)
-        eps = torch.randn_like(std)
-        return eps.mul(std).add_(mu) # return z sample
-        
-    def decoder(self, z):
-        h = F.relu(self.fc4(z))
-        h = F.relu(self.fc5(h))
-        return F.sigmoid(self.fc6(h)) 
-    
-    def forward(self, x):
-        mu, log_var = self.encoder(x.view(-1, 62500))
-        z = self.sampling(mu, log_var)
-        return self.decoder(z), mu, log_var
+    def generate(self, x: Tensor) -> Tensor:
+        """
+        Given an input image x, returns the reconstructed image
+        """
+        return self.forward(x)
 
-# build model
-vae = VAE(x_dim=62500, h_dim1= 5000, h_dim2=2500, z_dim=2)
-if torch.cuda.is_available():
-    vae.cuda()
 
-vae
 
-optimizer = optim.Adam(vae.parameters())
-# return reconstruction error + KL divergence losses
-def loss_function(recon_x, x, mu, log_var):
-    BCE = F.binary_cross_entropy(recon_x, x.view(-1, 62500), reduction='sum')
-    KLD = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
-    return BCE + KLD
+model = AutoEncoder2().to(device)
 
+if torch.cuda.device_count() > 1:
+  print("Let's use", torch.cuda.device_count(), "GPUs!")
+  # dim = 0 [30, xxx] -> [10, ...], [10, ...], [10, ...] on 3 GPUs
+  model = nn.DataParallel(model)
+
+
+optimizer = optim.Adam(model.parameters(), lr=1e-3)
+
+criterion = nn.BCELoss()
 
 def train(epoch):
-    vae.train()
+    model.train()
     train_loss = 0
     for batch_idx, (data, _) in enumerate(train_loader):
-        data = data.cuda()
+        data = data.to(device)
         optimizer.zero_grad()
-        
-        recon_batch, mu, log_var = vae(data)
-        loss = loss_function(recon_batch, data, mu, log_var)
-        
+        recon_batch = model(data)
+        loss = criterion(recon_batch,data)
         loss.backward()
         train_loss += loss.item()
         optimizer.step()
-        
-        if batch_idx % 100 == 0:
+        if batch_idx % args.log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), loss.item() / len(data)))
-    print('====> Epoch: {} Average loss: {:.4f}'.format(epoch, train_loss / len(train_loader.dataset)))
+                100. * batch_idx / len(train_loader),
+                loss.item() / len(data)))
 
-def test():
-    vae.eval()
-    test_loss= 0
+    print('====> Epoch: {} Average loss: {:.4f}'.format(
+          epoch, train_loss / len(train_loader.dataset)))
+
+
+def test(epoch):
+    model.eval()
+    test_loss = 0
     with torch.no_grad():
-        for data, _ in test_loader:
-            data = data.cuda()
-            recon, mu, log_var = vae(data)
-            
-            # sum up batch loss
-            test_loss += loss_function(recon, data, mu, log_var).item()
-        
+        for i, (data, _) in enumerate(test_loader):
+            data = data.to(device)
+            recon_batch  = model.generate(data)
+            #test_loss += loss_function(recon_batch, data, mu, logvar).item()
+            test_loss += criterion(recon_batch,data)
+            if i == 0:
+                n = min(data.size(0), 8)
+                comparison = torch.cat([x[:num_sample], recon_x[:num_sample]])    
+                #comparison = torch.cat([data[:n],
+                #                      recon_batch.view(args.batch_size, 1, 262144, 262144)[:n]])
+                save_image(comparison.cpu(),
+                         'results/reconstruction_' + str(epoch) + '.png', nrow=n)
+
     test_loss /= len(test_loader.dataset)
     print('====> Test set loss: {:.4f}'.format(test_loss))
 
-for epoch in range(1, 20):
-    train(epoch)
-    test()
+if __name__ == "__main__":
+    for epoch in range(1, args.epochs + 1):
+        train(epoch)
+        test(epoch)
+        with torch.no_grad():
+            sample = torch.randn(64, 20).to(device)
+            sample = model.decode(sample).cpu()
+            #sample = model.module.decode(sample).cpu()
+            save_image(sample.view(64, 1, 28, 28),
+                       'results/sample_' + str(epoch) + '.png')
