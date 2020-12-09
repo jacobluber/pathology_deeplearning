@@ -1,3 +1,7 @@
+for x in *.svs; do echo "sh /home/luberjm/code/imaging/scripts/svs_conversion.sh /data/luberjm/data/lungadeno/svs/test/$x" >> image_processing.swarm; done
+swarm -f image_processing.swarm -g 10 -t 1 -p 2 -b 10 --partition=ccr --time=00:15:00 --merge-output
+http://manpages.ubuntu.com/manpages/bionic/man1/openslide-write-png.1.html
+
 # imaging
 ## Setup
 Currently, the [nx application from NoMachine](https://www.nomachine.com/) is not working. See Biowulf instructions [here](https://hpc.nih.gov/docs/connect.html). To get around this and visually inspect images remotely, follow these steps:
