@@ -12,4 +12,4 @@ source /data/luberjm/conda/etc/profile.d/conda.sh || fail "conda load fail"
 conda activate imaging || fail "imaging packages load fail"
 
 PREFIX=${F%????} || fail "prefix fail"
-vips openslideload --level 2 $F ${PREFIX}.jpg || fail "vips fail"
+vips openslideload --level 0 $F ${PREFIX}.png || fail "vips fail"
