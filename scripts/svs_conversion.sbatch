@@ -2,6 +2,7 @@
 
 #SBATCH -o /home/luberjm/myjob.out
 #SBATCH -e /home/luberjm/myjob.err
+#SBATCH --time=00:45:00               # Time limit hrs:min:sec
 
 function fail {
     echo "FAIL: $@" >&2
