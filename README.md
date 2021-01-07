@@ -1,5 +1,4 @@
 # Imaging Differential Expression
-# Arguments and Usage
 ## Usage
 ```
 usage: argdown [-h] [--batch-size N] [--epochs N] [--gpus N] [--patches N]
@@ -57,4 +56,4 @@ add this flag to write out sampled coordinates that pass QC to the file
 5. For instructions, run `python experiment.py -h`
 
 ## DDP/NCCL Parallel 
-Run `sbatch ddp.sbatch`. This requires much argument tuning at the moment.
+Run `sbatch ddp.sbatch`. This requires much argument tuning at the moment. Installing all of the conda dependencies can be time consuming, it is recommended to use mamba to speed this up. The NCCL/DDP/pytorch lighning output is complex and difficult to determine if working correctly, example of what working output should look like is provided in the example_ddp.out file. 
