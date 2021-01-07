@@ -1,7 +1,7 @@
 # Imaging Differential Expression
 ## Usage
 ```
-usage: argdown [-h] [--batch-size N] [--epochs N] [--gpus N] [--patches N]
+usage: experiment.py [-h] [--batch-size N] [--epochs N] [--gpus N] [--patches N]
                [--patch-size N] [--num-workers N] [--read-coords]
                [--write-coords]
 ```
