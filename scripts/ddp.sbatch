@@ -1,11 +1,11 @@
 #!/bin/bash
 
-#SBATCH --constraint=gpup100
+#SBATCH --constraint=gpuk80
 #SBATCH --nodes=2
 #SBATCH --partition=gpu
-#SBATCH --gres=gpu:p100:4
-#SBATCH --ntasks-per-node=4
-#SBATCH --mem=120gb
+#SBATCH --gres=gpu:k80:2
+#SBATCH --ntasks-per-node=2
+#SBATCH --mem=20gb
 #SBATCH --time=00:20:00
 
 function fail {
@@ -33,4 +33,4 @@ export NCCL_SOCKET_IFNAME=^docker0,lo
 #export MASTER_ADDRESS=$(echo $slurm_nodes | cut -d' ' -f1)
 
 
-srun python experiment.py --epochs 5 --gpus 2 --patches 500 --patch-size 512 --num-workers 32 --batch-size 4  --read-coords
+srun python experiment.py --epochs 5 --gpus 2 --patches 500 --patch-size 512 --num-workers 5 --batch-size 1  --read-coords

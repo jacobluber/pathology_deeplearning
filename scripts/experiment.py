@@ -38,6 +38,6 @@ if __name__ == '__main__':
     input_data = SvsDatasetFromFolder("/data/luberjm/data/small/svs",args.patch_size,args.patches,args.num_workers,args.write_coords,args.read_coords)
     loader = torch.utils.data.DataLoader(input_data,  **kwargs)
     tb_logger = TensorBoardLogger('../tb_logs', name='autoencoder')
-    trainer = pl.Trainer(max_epochs=args.epochs, replace_sampler_ddp=True, gpus=args.gpus,logger=tb_logger,num_nodes=2,accelerator='horovod')
+    trainer = pl.Trainer(max_epochs=args.epochs, replace_sampler_ddp=True, gpus=args.gpus,logger=tb_logger,num_nodes=2,accelerator='ddp')
     autoencoder = AutoEncoder()
     trainer.fit(autoencoder, loader)
