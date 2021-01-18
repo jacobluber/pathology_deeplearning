@@ -55,7 +55,7 @@ if __name__ == '__main__':
     rddp = False
     if args.accelerator == "ddp":
         rddp = True
-    trainer = pl.Trainer(max_epochs=args.epochs, replace_sampler_ddp=rddp, gpus=args.gpus,logger=tb_logger,num_nodes=args.nodes,accelerator=args.accelerator,auto_lr_find=False,benchmark=False,fast_dev_run=False) #flush_logs_every_n_steps=1
+    trainer = pl.Trainer(max_epochs=args.epochs, replace_sampler_ddp=rddp, gpus=args.gpus,logger=tb_logger,num_nodes=args.nodes,accelerator=args.accelerator,auto_lr_find=False,benchmark=False,fast_dev_run=True,precision=16) #flush_logs_every_n_steps=1
     autoencoder = customVAE()
     trainer.tune(autoencoder,train_loader,val_loader)
     trainer.fit(autoencoder,train_loader,val_loader)

@@ -8,12 +8,14 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from utils import *
 from vae import *
 from dataloader import *
+from torch.cuda import amp
+from pytorch_lightning.utilities import AMPType
 import argparse
 import os
 import torch
 import torch.nn.functional as F
 import pytorch_lightning as pl
-
+import torch.cuda.amp
 
 parser = argparse.ArgumentParser(description='H&E Autoencoder')
 parser.add_argument('--batch-size', type=int, default=16, metavar='N',
@@ -55,7 +57,7 @@ if __name__ == '__main__':
     rddp = False
     if args.accelerator == "ddp":
         rddp = True
-    trainer = pl.Trainer(max_epochs=args.epochs, replace_sampler_ddp=rddp, gpus=args.gpus,logger=tb_logger,num_nodes=args.nodes,accelerator=args.accelerator,auto_lr_find=False,benchmark=False,fast_dev_run=False) #flush_logs_every_n_steps=1
+    trainer = pl.Trainer(max_epochs=args.epochs, replace_sampler_ddp=rddp, gpus=args.gpus,logger=tb_logger,num_nodes=args.nodes,accelerator=args.accelerator,auto_lr_find=False,benchmark=False,fast_dev_run=False,precision=16) #flush_logs_every_n_steps=1
     autoencoder = customVAE()
     trainer.tune(autoencoder,train_loader,val_loader)
     trainer.fit(autoencoder,train_loader,val_loader)
