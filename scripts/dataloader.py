@@ -1,4 +1,5 @@
 from __future__ import print_function
+from torch.nn import functional as F
 from torch.utils.data import Dataset, DataLoader
 from os import listdir
 from os.path import join
@@ -10,16 +11,16 @@ import random
 import pickle
 
 class SvsDatasetFromFolder(Dataset):    
-    def __init__(self, dataset_dir, patch_size, num_patches, num_workers, write_coords, read_coords):
+    def __init__(self, dataset_dir, patch_size, num_patches, num_workers, write_coords, read_coords, custom_coords_file, transforms=None):
         super(SvsDatasetFromFolder, self).__init__()
-        print("loading images")
         self.imageFilenames = []
+        self.transforms = transforms
         self.imageFilenames.extend(join(dataset_dir, x) for x in sorted(listdir(dataset_dir)))
         self.dirLength = len(self.imageFilenames)
         self.patchSize = patch_size
         self.numPatches = num_patches
         if read_coords:
-            with open('/home/luberjm/pl/code/pc.data','rb') as filehandle:
+            with open(custom_coords_file,'rb') as filehandle:
                 self.patch_coords = pickle.load(filehandle)
                 filehandle.close()
         if not read_coords:
@@ -32,7 +33,8 @@ class SvsDatasetFromFolder(Dataset):
             with open('patch_coords.data','wb') as filehandle:
                 pickle.dump(self.patch_coords,filehandle)
                 filehandle.close()
-        assert len(self.patch_coords) == self.dirLength * self.numPatches               
+        if not read_coords:
+            assert len(self.patch_coords) == self.dirLength * self.numPatches               
     def _fetch_coords(self,fname):
         print(fname,flush=True)
         img = self._load_file(fname)
@@ -68,8 +70,9 @@ class SvsDatasetFromFolder(Dataset):
     def _img_to_tensor(self,img,x,y):
         t = img.crop(x,y,self.patchSize,self.patchSize)
         t_np = vips2numpy(t)
-        tt_np = transforms.ToTensor()(t_np)
-        out_t = tt_np[:3,:,:]
+        #tt_np = transforms.ToTensor()(t_np)
+        out_t = self.transforms(t_np)
+        out_t = out_t[:3,:,:]
         return out_t
     def _patching(self, img):
         count = 0
@@ -87,7 +90,7 @@ class SvsDatasetFromFolder(Dataset):
         fname, coord_tuple = self.patch_coords[index]
         img = self._load_file(fname)
         out = self._img_to_tensor(img,coord_tuple[0],coord_tuple[1])
-        return out
+        return out, out.size()
     def __len__(self):
-        return self.numPatches * self.dirLength
+        return len(self.patch_coords)
 

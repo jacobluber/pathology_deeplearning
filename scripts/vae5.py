@@ -1,6 +1,6 @@
 from __future__ import print_function
 from torch.nn import functional as F
-from pl_bolts.models import VAE
+from basic_vae_module import VAE
 import pytorch_lightning as pl
 import PIL
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -14,20 +14,20 @@ import torchvision
 from torchvision import datasets, transforms
 
 class customVAE(VAE):
-    def __init__(self, *args, **kwargs):
-        super(customVAE, self).__init__(latent_dim=256,enc_out_dim=512,enc_type='resnet18',input_height=64,input_channels=3,*args, **kwargs)
-        self.example_input_array = torch.rand(1, 3, 64, 64)
+    def __init__(self,latent_dim,enc_out_dim,enc_type,first_conv,maxpool1, *args, **kwargs):
+        super(customVAE, self).__init__(latent_dim=int(latent_dim),enc_out_dim=int(enc_out_dim),enc_type=enc_type,first_conv=first_conv,maxpool1=maxpool1,input_height=64,input_channels=1,*args, **kwargs)
+        self.example_input_array = torch.rand(1, 1, 64, 64)
         self.test_outs = []
         #self.image_count = 0
-        #self.time = datetime.now()        
+        self.time = datetime.now()        
         #self.writer = SummaryWriter('/data/luberjm/tb_logs')
 
-    #def training_epoch_end(self,output):
-    #    now = datetime.now()
-    #    delta = now - self.time
-    #    self.time = now
-    #    tensorboard_logs = {'time_secs_epoch': delta.seconds}
-    #    self.log_dict(tensorboard_logs) 
+    def training_epoch_end(self,output):
+        now = datetime.now()
+        delta = now - self.time
+        self.time = now
+        tensorboard_logs = {'time_secs_epoch': delta.seconds}
+        self.log_dict(tensorboard_logsi,sync_dist=True) 
 
     #def reduce_image(self,batch,dim):
     #    for i in range(0,len(batch)-1):
@@ -39,12 +39,12 @@ class customVAE(VAE):
 
     def training_step(self, batch, batch_idx):
         loss, logs = self.step(batch, batch_idx)
-        self.log_dict({f"train_{k}": v for k, v in logs.items()}, on_step=True, on_epoch=False)
+        self.log_dict({f"train_{k}": v for k, v in logs.items()}, on_step=True, on_epoch=False,sync_dist=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
         loss, logs = self.step(batch, batch_idx)
-        self.log_dict({f"val_{k}": v for k, v in logs.items()})
+        self.log_dict({f"val_{k}": v for k, v in logs.items()},sync_dist=True)
         if self.global_rank == 0:
             if batch_idx == 0:
                 self.test_outs = batch
@@ -73,7 +73,7 @@ class customVAE(VAE):
 
     def test_step(self, batch, batch_idx):
         loss, logs = self.step(batch, batch_idx)
-        self.log_dict({f"test_{k}": v for k, v in logs.items()}, on_step=True, on_epoch=False)
+        self.log_dict({f"test_{k}": v for k, v in logs.items()}, on_step=True, on_epoch=False,sync_dist=True)
         #if self.output_i:
         #    x, y = batch
         #    z, x_hat, p, q = self._run_step(x)    

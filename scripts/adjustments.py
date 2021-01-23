@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader, random_split, distributed
 from torchvision import transforms
 from pytorch_lightning.loggers import TensorBoardLogger
 from utils import *
-from vae import *
+from vae5 import *
 from dataloader import *
 import argparse
 import os
@@ -31,9 +31,14 @@ parser.add_argument('--train-size',default='100',metavar='N',help='size of the t
 parser.add_argument('--test-size',default='10',metavar='N',help='size of the training set, must be an even number (default: 10)')
 parser.add_argument('--accelerator',default='gpu', metavar='S',help='gpu accelerator to use, use ddp for running in parallel (default: gpu)')
 parser.add_argument('--logging-name',default='autoencoder', metavar='S',help='name to log this run under in tensorboard (default: autoencoder)')
-#parser.add_argument('--latent-space-dim',default='90000',metavar='N',help='dimension of the latent space as a 1D array (default: 90000)')
+parser.add_argument('--resnet',default='resnet18',metavar='S')
+parser.add_argument('--enc-dim',default='512',metavar='N')
+parser.add_argument('--latent-dim',default='256',metavar='N')
+parser.add_argument('--first-conv',dest='first_conv',action='store_true')
+parser.add_argument('--maxpool1',dest='maxpool1',action='store_true')
 parser.add_argument('--read-coords',dest='read_coords',action='store_true',help='add this flag to read in previously sampled patch coordinates that pass QC from the default file \'patch_coords.data\'')
 parser.add_argument('--write-coords', dest='write_coords', action='store_true',help='add this flag to write out sampled coordinates that pass QC to the default file \'patch_coords.data\', which can be preloaded to speed up training')
+
 #these are not implemented yet but need to be in the future 
 #parser.add_argument('--log-interval', type=int, default=10, metavar='N',
 #                    help='how many batches to wait before logging training status')
@@ -46,7 +51,7 @@ kwargs = {'batch_size':args.batch_size,'pin_memory':True,'num_workers':args.work
 
 
 if __name__ == '__main__':
-    transformations = transforms.Compose([transforms.ToPILImage(),transforms.Resize(size=64),transforms.ToTensor()])
+    transformations = transforms.Compose([transforms.ToPILImage(),transforms.Grayscale(num_output_channels=1),transforms.Resize(size=64),transforms.ToTensor()])
     input_data = SvsDatasetFromFolder(args.svs_dir,args.patch_size,args.patches,args.workers,args.write_coords,args.read_coords,args.custom_coords_file,transforms=transformations)
     data_train, data_other = random_split(input_data, [int(args.train_size), int(args.test_size)])
     data_test,data_val = random_split(data_other, [int(int(args.test_size)/2),int(int(args.test_size)/2)])
@@ -57,12 +62,13 @@ if __name__ == '__main__':
     rddp = False
     if args.accelerator == "ddp":
         rddp = True
-    trainer = pl.Trainer(max_epochs=args.epochs, replace_sampler_ddp=rddp, gpus=args.gpus,logger=tb_logger,num_nodes=args.nodes,accelerator=args.accelerator,auto_lr_find=False,benchmark=False,fast_dev_run=False) #flush_logs_every_n_steps=1
+    trainer = pl.Trainer(max_epochs=args.epochs, replace_sampler_ddp=rddp, gpus=args.gpus,logger=tb_logger,num_nodes=args.nodes,accelerator=args.accelerator,auto_lr_find=False,benchmark=True,fast_dev_run=False) #flush_logs_every_n_steps=1
     #autoencoder = AutoEncoder()
     #autoencoder = VanillaVAE()
-    autoencoder = customVAE()
+    autoencoder = customVAE(enc_type=args.resnet,first_conv=args.first_conv,maxpool1=args.maxpool1,enc_out_dim=args.enc_dim,latent_dim=args.latent_dim)
     trainer.tune(autoencoder,train_loader,val_loader)
     trainer.fit(autoencoder,train_loader,val_loader)
+    #trainer.save_checkpoint("/data/luberjm/models/50.ckpt")
     #trainer.fit(autoencoder,train_loader)
     #save model here
     fun = trainer.test(autoencoder,test_loader)

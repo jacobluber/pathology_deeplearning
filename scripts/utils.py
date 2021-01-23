@@ -4,6 +4,7 @@ from typing import TypeVar
 import numpy as np
 import torch
 import pyvips
+from typing import List, Callable, Union, Any, TypeVar, Tuple
 
 Tensor = TypeVar('torch.tensor')
 device = torch.device("cuda")
