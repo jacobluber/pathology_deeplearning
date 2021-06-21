@@ -59,10 +59,11 @@ class SvsDatasetFromFolder(Dataset):
             else: 
                 return True
     def _filter_whitespace(self,tensor_3d):
-        r = np.mean(np.array(tensor_3d[0]))
-        g = np.mean(np.array(tensor_3d[1]))
-        b = np.mean(np.array(tensor_3d[2]))
-        channel_avg = np.mean(np.array([r,g,b]))
+        # r = np.mean(np.array(tensor_3d[0]))
+        # g = np.mean(np.array(tensor_3d[1]))
+        # b = np.mean(np.array(tensor_3d[2]))
+        # channel_avg = np.mean(np.array([r,g,b]))
+        channel_avg = np.mean(tensor_3d)
         if channel_avg < .82:
             return True
         else:
